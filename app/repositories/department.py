@@ -104,15 +104,17 @@ class DepartmentRepository:
         await self.session.flush()
 
     async def reassign_employees(
-        self,
-        from_department_id: int,
-        to_department_id: int,
+            self,
+            from_department_id: int,
+            to_department_id: int,
     ) -> None:
-        """Переводит всех сотрудников из одного отдела в другой."""
-        result = await self.session.execute(
-            select(Employee).where(Employee.department_id == from_department_id)
+        """Переводит всех сотрудников из одного отдела в другой через SQL UPDATE."""
+        from sqlalchemy import update
+        await self.session.execute(
+            update(Employee)
+            .where(Employee.department_id == from_department_id)
+            .values(department_id=to_department_id)
         )
-        employees = list(result.scalars().all())
-        for employee in employees:
-            employee.department_id = to_department_id
         await self.session.flush()
+        # Экспирируем все объекты в сессии чтобы ORM не держал устаревшие связи
+        self.session.expire_all()
